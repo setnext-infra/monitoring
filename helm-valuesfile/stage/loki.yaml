@@ -1,0 +1,119 @@
+loki:
+  image:
+    registry: docker.io
+    repository: grafana/loki
+    tag: 3.4.2
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    max_cache_freshness_per_query: 10m
+    query_timeout: 300s
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    split_queries_by_interval: 15m
+    volume_enabled: true
+
+  storage:
+    type: s3
+    bucketNames:
+      chunks: setnext-logs
+      ruler: setnext-logs/ruler
+    s3:
+      region: us-east-1
+      insecure: false
+
+  auth_enabled: false
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /data/index
+    cache_location: /data/index_cache
+    cache_ttl: 12h
+    flush_interval: 12h
+
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: topology.kubernetes.io/zone
+            operator: In
+            values:
+            - us-east-1a
+  nodeSelector:
+    topology.kubernetes.io/zone: us-east-1a
+
+serviceAccount:
+  create: true
+  annotations:
+    "eks.amazonaws.com/role-arn": "<loki bucket url>"
+
+minio:
+  enabled: false
+
+deploymentMode: SingleBinary
+
+singleBinary:
+  replicas: 1
+  persistence:
+    storageClass: gp3
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+
+sidecar:
+  image:
+    repository: kiwigrid/k8s-sidecar
+    tag: 1.30.0
+  resources:
+    requests:
+      cpu: 50m
+      memory: 50Mi
+    limits:
+      cpu: 100m
+      memory: 100Mi
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomCompactor:
+  replicas: 0
+bloomGateway:
+  replicas: 0
+
+gateway:
+  enabled: false
